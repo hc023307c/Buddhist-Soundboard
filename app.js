@@ -1,140 +1,184 @@
 // app.js
 
 document.addEventListener("DOMContentLoaded", () => {
-  const gridEl = document.getElementById("instrumentGrid");
+  const gridEl = document.getElementById("padGrid");
+  const STORAGE_KEY = "dharmaAudioPadOrder";
 
-  if (!window.INSTRUMENTS || !window.VELOCITY_LEVELS) {
-    console.error("INSTRUMENTS 或 VELOCITY_LEVELS 未定義，請確認 audiodb.js 已正確載入。");
-    return;
+  // 讀取排序設定（localStorage）
+  function loadOrder() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return null;
+      const arr = JSON.parse(raw);
+      if (!Array.isArray(arr)) return null;
+      return arr;
+    } catch (e) {
+      console.warn("Load order failed", e);
+      return null;
+    }
   }
 
-  // 為每個法器準備 base Audio + 正在播放中的 clone 清單
-  const instrumentPlayers = {};
+  // 儲存排序設定
+  function saveOrder(order) {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(order));
+    } catch (e) {
+      console.warn("Save order failed", e);
+    }
+  }
 
-  window.INSTRUMENTS.forEach((inst) => {
-    const audio = new Audio(inst.file);
+  // 根據目前 DB + order，建立實際渲染順序
+  function getOrderedList() {
+    const map = new Map();
+    AUDIO_DB.forEach((item) => map.set(item.id, item));
+
+    const savedOrder = loadOrder();
+    let result = [];
+
+    if (savedOrder && savedOrder.length > 0) {
+      // 先依照已存順序放入
+      savedOrder.forEach((id) => {
+        if (map.has(id)) {
+          result.push(map.get(id));
+          map.delete(id);
+        }
+      });
+    }
+
+    // 有新增法器但 order 沒記錄到的，補在後面
+    map.forEach((item) => {
+      result.push(item);
+    });
+
+    return result;
+  }
+
+  // 建立單一 pad 模組（播放＋停止）
+  function createPadItem(meta) {
+    const padItem = document.createElement("div");
+    padItem.className = "pad-item";
+    padItem.dataset.id = meta.id;
+    padItem.setAttribute("draggable", "true");
+
+    // 建立 Audio 實例
+    const audio = new Audio(meta.file);
     audio.preload = "auto";
 
-    instrumentPlayers[inst.id] = {
-      baseAudio: audio,
-      activeNodes: [] // 存放正在播放的 clone
-    };
-  });
+    // 上方：播放按鍵
+    const playBtn = document.createElement("button");
+    playBtn.type = "button";
+    playBtn.className = "audio-pad";
 
-  // 建立法器卡片
-  function renderInstruments() {
-    gridEl.innerHTML = "";
+    const mainLabel = document.createElement("div");
+    mainLabel.className = "audio-pad-label-main";
+    mainLabel.textContent = meta.name;
 
-    window.INSTRUMENTS.forEach((inst) => {
-      const card = document.createElement("div");
-      card.className = "instrument-card";
+    const subLabel = document.createElement("div");
+    subLabel.className = "audio-pad-label-sub";
+    subLabel.textContent = meta.subtitle || "";
 
-      // Header
-      const header = document.createElement("div");
-      header.className = "instrument-header";
+    playBtn.appendChild(mainLabel);
+    playBtn.appendChild(subLabel);
 
-      const titleGroup = document.createElement("div");
-      titleGroup.className = "instrument-title-group";
+    // 下方：停止按鍵
+    const stopBtn = document.createElement("button");
+    stopBtn.type = "button";
+    stopBtn.className = "audio-pad-stop";
+    stopBtn.textContent = "停止此法器";
 
-      const nameEl = document.createElement("h2");
-      nameEl.className = "instrument-name";
-      nameEl.textContent = inst.name;
-
-      const descEl = document.createElement("p");
-      descEl.className = "instrument-desc";
-      descEl.textContent = inst.description || "";
-
-      titleGroup.appendChild(nameEl);
-      titleGroup.appendChild(descEl);
-
-      const icon = document.createElement("div");
-      icon.className = "instrument-icon";
-
-      header.appendChild(titleGroup);
-      header.appendChild(icon);
-
-      // Velocity Bar（一顆內的五段）
-      const bar = document.createElement("div");
-      bar.className = "velocity-bar";
-
-      window.VELOCITY_LEVELS.forEach((level) => {
-        const btn = document.createElement("button");
-        btn.className = `velocity-step level-${level.id}`;
-        btn.textContent = level.label;
-
-        btn.addEventListener("click", () => {
-          playInstrumentLevel(inst.id, level);
-        });
-
-        bar.appendChild(btn);
-      });
-
-      // Stop row（單一法器停止）
-      const stopRow = document.createElement("div");
-      stopRow.className = "stop-row";
-
-      const stopBtn = document.createElement("button");
-      stopBtn.className = "stop-button";
-      stopBtn.innerHTML = `<span class="icon"></span><span>停止本法器</span>`;
-
-      stopBtn.addEventListener("click", () => {
-        stopInstrument(inst.id);
-      });
-
-      stopRow.appendChild(stopBtn);
-
-      // 組合卡片
-      card.appendChild(header);
-      card.appendChild(bar);
-      card.appendChild(stopRow);
-
-      gridEl.appendChild(card);
-    });
-  }
-
-  // 播放某一個法器的某一個力度
-  function playInstrumentLevel(instrumentId, level) {
-    const player = instrumentPlayers[instrumentId];
-    if (!player) return;
-
-    const base = player.baseAudio;
-
-    // 建立 clone，避免快速連打被截斷
-    const node = base.cloneNode(true);
-    node.volume = level.gain;
-
-    // 加入 active 清單，方便停止
-    player.activeNodes.push(node);
-
-    node.addEventListener("ended", () => {
-      const idx = player.activeNodes.indexOf(node);
-      if (idx !== -1) {
-        player.activeNodes.splice(idx, 1);
-      }
-    });
-
-    // 播放
-    node.play().catch((err) => {
-      console.warn("播放失敗（可能是瀏覽器尚未允許音訊互動）:", err);
-    });
-  }
-
-  // 停止某一個法器目前所有正在響的聲音
-  function stopInstrument(instrumentId) {
-    const player = instrumentPlayers[instrumentId];
-    if (!player) return;
-
-    player.activeNodes.forEach((node) => {
+    // 播放邏輯
+    function playSound() {
       try {
-        node.pause();
-        node.currentTime = 0;
+        audio.currentTime = 0;
+        audio.play();
+        playBtn.classList.add("is-playing");
       } catch (e) {
-        // ignore
+        console.warn("play failed", e);
       }
+    }
+
+    function stopSound() {
+      try {
+        audio.pause();
+        audio.currentTime = 0;
+        playBtn.classList.remove("is-playing");
+      } catch (e) {
+        console.warn("stop failed", e);
+      }
+    }
+
+    playBtn.addEventListener("click", playSound);
+    stopBtn.addEventListener("click", stopSound);
+
+    audio.addEventListener("ended", () => {
+      playBtn.classList.remove("is-playing");
     });
-    player.activeNodes.length = 0;
+
+    // 組合模組
+    padItem.appendChild(playBtn);
+    padItem.appendChild(stopBtn);
+
+    return padItem;
   }
 
-  // 初始 render
-  renderInstruments();
+  // 渲染全部法器
+  function renderPads() {
+    const list = getOrderedList();
+    gridEl.innerHTML = "";
+    list.forEach((meta) => {
+      const padItem = createPadItem(meta);
+      gridEl.appendChild(padItem);
+    });
+
+    // 渲染完再掛拖曳事件
+    initDragAndDrop();
+  }
+
+  // 拖曳排序邏輯（簡易版：桌機一定可用，手機看瀏覽器支援度）
+  function initDragAndDrop() {
+    const items = Array.from(gridEl.querySelectorAll(".pad-item"));
+    let dragSrcId = null;
+
+    items.forEach((item) => {
+      item.addEventListener("dragstart", (e) => {
+        dragSrcId = item.dataset.id;
+        item.classList.add("dragging");
+
+        // 有些瀏覽器需要 setData 才會啟用 DnD
+        try {
+          e.dataTransfer.setData("text/plain", dragSrcId);
+        } catch (_) {}
+        e.dataTransfer.effectAllowed = "move";
+      });
+
+      item.addEventListener("dragend", () => {
+        item.classList.remove("dragging");
+        dragSrcId = null;
+      });
+
+      item.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = "move";
+      });
+
+      item.addEventListener("drop", (e) => {
+        e.preventDefault();
+        const targetId = item.dataset.id;
+        if (!dragSrcId || !targetId || dragSrcId === targetId) return;
+
+        const currentOrder = getOrderedList().map((it) => it.id);
+        const fromIndex = currentOrder.indexOf(dragSrcId);
+        const toIndex = currentOrder.indexOf(targetId);
+        if (fromIndex === -1 || toIndex === -1) return;
+
+        // 移動元素：fromIndex → toIndex
+        currentOrder.splice(toIndex, 0, currentOrder.splice(fromIndex, 1)[0]);
+        saveOrder(currentOrder);
+        renderPads();
+      });
+    });
+  }
+
+  // ===== 啟動 =====
+  renderPads();
 });
