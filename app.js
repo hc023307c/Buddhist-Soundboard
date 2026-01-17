@@ -1,10 +1,149 @@
-// app.js
+// app.js（法器演音板）
+// 功能重點：
+// 1. 使用 Web Audio API 預先解碼，減少延遲
+// 2. 小木魚（id 含 "xiaoyu"）→ 重疊播放（overlap 模式）
+// 3. 其他法器（如 yinqing / yinqingbing）→ 新聲來時舊聲淡出（fade 模式）
 
 document.addEventListener("DOMContentLoaded", () => {
   const gridEl = document.getElementById("padGrid");
   const STORAGE_KEY = "dharmaAudioPadOrder";
 
-  // 讀取排序設定（localStorage）
+  // === 檢查 DB ===
+  if (typeof AUDIO_DB === "undefined") {
+    console.error("AUDIO_DB 未定義，請先在 audiodb.js 定義。");
+    return;
+  }
+
+  // === Web Audio Engine ===
+  let audioCtx = null;
+  const audioBuffers = new Map();        // id -> AudioBuffer
+  const activeSources = new Map();       // id -> [{ source, gainNode }]
+
+  function getAudioContext() {
+    if (!audioCtx) {
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      audioCtx = new Ctx();
+    }
+    return audioCtx;
+  }
+
+  // 推斷播放模式：小木魚重疊，其它淡出
+  function getPlayMode(meta) {
+    if (meta.mode) return meta.mode;
+    if (meta.id && meta.id.toLowerCase().includes("xiaoyu")) {
+      return "overlap";
+    }
+    return "fade";
+  }
+
+  async function loadBuffer(meta) {
+    if (audioBuffers.has(meta.id)) return;
+
+    const ctx = getAudioContext();
+    try {
+      const resp = await fetch(meta.file);
+      const arrBuf = await resp.arrayBuffer();
+      const audioBuf = await ctx.decodeAudioData(arrBuf);
+      audioBuffers.set(meta.id, audioBuf);
+    } catch (err) {
+      console.error("載入音檔失敗：", meta.file, err);
+    }
+  }
+
+  async function ensureBufferLoaded(meta) {
+    if (audioBuffers.has(meta.id)) return;
+    await loadBuffer(meta);
+  }
+
+  function playInstrument(meta, playBtn) {
+    const ctx = getAudioContext();
+    const buffer = audioBuffers.get(meta.id);
+    if (!buffer) {
+      console.warn("音檔尚未載入或 id 不存在：", meta.id);
+      return;
+    }
+
+    const mode = getPlayMode(meta);
+
+    const source = ctx.createBufferSource();
+    source.buffer = buffer;
+
+    const gainNode = ctx.createGain();
+    gainNode.gain.setValueAtTime(1.0, ctx.currentTime);
+
+    source.connect(gainNode).connect(ctx.destination);
+
+    let list = activeSources.get(meta.id) || [];
+
+    if (mode === "fade") {
+      // 新聲來 → 舊聲淡出
+      const now = ctx.currentTime;
+      list.forEach(({ source: oldSrc, gainNode: oldGain }) => {
+        try {
+          const g = oldGain.gain;
+          g.cancelScheduledValues(now);
+          g.setValueAtTime(g.value, now);
+          g.linearRampToValueAtTime(0, now + 0.25); // 0.25s 淡出
+          oldSrc.stop(now + 0.3);
+        } catch (_) {}
+      });
+      list = []; // 清掉舊的
+    }
+
+    const entry = { source, gainNode };
+    list.push(entry);
+    activeSources.set(meta.id, list);
+
+    playBtn.classList.add("is-playing");
+
+    source.onended = () => {
+      const arr = activeSources.get(meta.id) || [];
+      const idx = arr.indexOf(entry);
+      if (idx !== -1) arr.splice(idx, 1);
+      if (arr.length === 0) {
+        activeSources.delete(meta.id);
+        playBtn.classList.remove("is-playing");
+      } else {
+        activeSources.set(meta.id, arr);
+      }
+    };
+
+    try {
+      source.start();
+    } catch (e) {
+      console.warn("source start failed", e);
+    }
+  }
+
+  function stopInstrument(meta, playBtn) {
+    if (!audioCtx) {
+      playBtn.classList.remove("is-playing");
+      return;
+    }
+    const ctx = audioCtx;
+    const list = activeSources.get(meta.id);
+    if (!list || !list.length) {
+      playBtn.classList.remove("is-playing");
+      return;
+    }
+
+    const now = ctx.currentTime;
+    list.forEach(({ source, gainNode }) => {
+      try {
+        const g = gainNode.gain;
+        g.cancelScheduledValues(now);
+        g.setValueAtTime(g.value, now);
+        g.linearRampToValueAtTime(0, now + 0.15);
+        source.stop(now + 0.2);
+      } catch (_) {}
+    });
+
+    playBtn.classList.remove("is-playing");
+    // onended 觸發後會真正清掉 activeSources
+  }
+
+  // === 原本的排序邏輯 ===
+
   function loadOrder() {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
@@ -18,7 +157,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // 儲存排序設定
   function saveOrder(order) {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(order));
@@ -27,7 +165,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // 根據目前 DB + order，建立實際渲染順序
   function getOrderedList() {
     const map = new Map();
     AUDIO_DB.forEach((item) => map.set(item.id, item));
@@ -36,7 +173,6 @@ document.addEventListener("DOMContentLoaded", () => {
     let result = [];
 
     if (savedOrder && savedOrder.length > 0) {
-      // 先依照已存順序放入
       savedOrder.forEach((id) => {
         if (map.has(id)) {
           result.push(map.get(id));
@@ -45,7 +181,6 @@ document.addEventListener("DOMContentLoaded", () => {
       });
     }
 
-    // 有新增法器但 order 沒記錄到的，補在後面
     map.forEach((item) => {
       result.push(item);
     });
@@ -59,10 +194,6 @@ document.addEventListener("DOMContentLoaded", () => {
     padItem.className = "pad-item";
     padItem.dataset.id = meta.id;
     padItem.setAttribute("draggable", "true");
-
-    // 建立 Audio 實例
-    const audio = new Audio(meta.file);
-    audio.preload = "auto";
 
     // 上方：播放按鍵
     const playBtn = document.createElement("button");
@@ -86,32 +217,24 @@ document.addEventListener("DOMContentLoaded", () => {
     stopBtn.className = "audio-pad-stop";
     stopBtn.textContent = "停止此法器";
 
-    // 播放邏輯
-    function playSound() {
-      try {
-        audio.currentTime = 0;
-        audio.play();
-        playBtn.classList.add("is-playing");
-      } catch (e) {
-        console.warn("play failed", e);
+    // 播放邏輯（使用 Web Audio）
+    playBtn.addEventListener("click", async () => {
+      const ctx = getAudioContext();
+      if (ctx.state === "suspended") {
+        try {
+          await ctx.resume();
+        } catch (e) {
+          console.warn("AudioContext resume failed", e);
+        }
       }
-    }
 
-    function stopSound() {
-      try {
-        audio.pause();
-        audio.currentTime = 0;
-        playBtn.classList.remove("is-playing");
-      } catch (e) {
-        console.warn("stop failed", e);
-      }
-    }
+      await ensureBufferLoaded(meta);
+      playInstrument(meta, playBtn);
+    });
 
-    playBtn.addEventListener("click", playSound);
-    stopBtn.addEventListener("click", stopSound);
-
-    audio.addEventListener("ended", () => {
-      playBtn.classList.remove("is-playing");
+    // 停止此法器
+    stopBtn.addEventListener("click", () => {
+      stopInstrument(meta, playBtn);
     });
 
     // 組合模組
@@ -130,11 +253,14 @@ document.addEventListener("DOMContentLoaded", () => {
       gridEl.appendChild(padItem);
     });
 
-    // 渲染完再掛拖曳事件
     initDragAndDrop();
+    // 順便偷偷預載所有音檔（不等，也不阻塞 UI）
+    list.forEach((meta) => {
+      loadBuffer(meta);
+    });
   }
 
-  // 拖曳排序邏輯（簡易版：桌機一定可用，手機看瀏覽器支援度）
+  // 拖曳排序
   function initDragAndDrop() {
     const items = Array.from(gridEl.querySelectorAll(".pad-item"));
     let dragSrcId = null;
@@ -143,8 +269,6 @@ document.addEventListener("DOMContentLoaded", () => {
       item.addEventListener("dragstart", (e) => {
         dragSrcId = item.dataset.id;
         item.classList.add("dragging");
-
-        // 有些瀏覽器需要 setData 才會啟用 DnD
         try {
           e.dataTransfer.setData("text/plain", dragSrcId);
         } catch (_) {}
@@ -171,7 +295,6 @@ document.addEventListener("DOMContentLoaded", () => {
         const toIndex = currentOrder.indexOf(targetId);
         if (fromIndex === -1 || toIndex === -1) return;
 
-        // 移動元素：fromIndex → toIndex
         currentOrder.splice(toIndex, 0, currentOrder.splice(fromIndex, 1)[0]);
         saveOrder(currentOrder);
         renderPads();
