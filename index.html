@@ -4,37 +4,39 @@
   <meta charset="UTF-8" />
   <title>法器演音板</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <!-- 檔名改回標準：style.css -->
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <div class="app-shell">
     <header class="app-header">
-      <div class="app-title-group">
+      <div class="header-inner">
         <h1 class="app-title">法器演音板</h1>
-        <p class="app-subtitle">禪修練習用 · 法器音一鍵播放 · 可自行排列順序</p>
+        <p class="app-subtitle">模擬禪堂法器力度，輕輕敲起，止靜攝心。</p>
       </div>
     </header>
 
     <main class="app-main">
-      <section class="view">
-        <h2 class="section-title">法器清單</h2>
-        <p class="section-desc">
-          點擊上方按鍵播放法器聲，下方按鍵可停止該法器。拖曳整塊卡片可調整順序（會記錄在此裝置）。
+      <section class="intro">
+        <p class="intro-text">
+          每一個法器卡片都是一顆法器。卡片內由左至右依序為
+          <span class="tag">輕 1</span>、
+          <span class="tag">輕 2</span>、
+          <span class="tag">中 3</span>、
+          <span class="tag">強 4</span>、
+          <span class="tag">止靜 5</span>。
+          看起來是一顆按鍵，敲哪段就出現對應的音量與音色。
         </p>
+      </section>
 
-        <div id="padGrid" class="pad-grid">
-          <!-- 由 app.js 動態產生 -->
+      <section class="pad-section">
+        <div id="instrumentGrid" class="instrument-grid">
+          <!-- 由 app.js 動態產生法器卡片 -->
         </div>
-
-        <p class="hint-text">
-          💡 提示：桌機用滑鼠拖曳卡片；手機長按卡片再拖動，可重新排列位置。
-        </p>
       </section>
     </main>
 
     <footer class="app-footer">
-      <span>© 2026 禪修工具 · 法器演音板</span>
+      <span>© 2026 法器演音板 · 個人禪修實驗工具</span>
     </footer>
   </div>
 
