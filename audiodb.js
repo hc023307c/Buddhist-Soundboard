@@ -7,19 +7,25 @@ const AUDIO_DB = [
     id: "yinqing",
     name: "引磬",
     subtitle: "一聲清脆 · 提起正念",
-    file: "audio/yinqing.mp4"
+    file: "audio/yinqing.WAV"
   },
   {
     id: "yinqingbing",
     name: "引磬柄",
     subtitle: "起落有序 · 開啟儀軌",
-    file: "audio/yinqingbing.mp4"
+    file: "audio/yinqingbing.WAV"
   },
   {
     id: "xiaoyu",
     name: "小木魚",
     subtitle: "一下一念 · 念念分明",
-    file: "audio/xiaoyu.mp4"
+    file: "audio/xiaoyu.WAV"
+  },
+  {
+    id: "yaqing",
+    name: "壓磬聲",
+    subtitle: "壓磬短音 · 回到當下",
+    file: "audio/yaqing.WAV"
   }
 
   // 未來要新增法器，照這樣加就好：
