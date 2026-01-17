@@ -1,31 +1,32 @@
 // audiodb.js
-// 法器「音源資料庫」：要新增法器就改這裡
+// 這個檔案是「法器 DB」，未來只要在這裡新增/調整即可。
+// audio 檔案請放在 /audio 資料夾下。
 
-const AUDIO_BANK = [
+const AUDIO_DB = [
   {
     id: "yinqing",
     name: "引磬",
-    description: "止靜用，一聲清亮長殘響。",
-    src: "audio/yinqing.mp4"
+    subtitle: "一聲清脆 · 提起正念",
+    file: "audio/yinqing.mp4"
   },
   {
     id: "yinqingbing",
     name: "引磬柄",
-    description: "起落身行提示用，短促清脆。",
-    src: "audio/yinqingbing.mp4"
+    subtitle: "起落有序 · 開啟儀軌",
+    file: "audio/yinqingbing.mp4"
   },
   {
     id: "xiaoyu",
     name: "小木魚",
-    description: "念誦節奏用，輕柔木魚聲。",
-    src: "audio/xiaoyu.mp4"
+    subtitle: "一下一念 · 念念分明",
+    file: "audio/xiaoyu.mp4"
   }
 
-  // 例如未來可以多加：
+  // 未來要新增法器，照這樣加就好：
   // {
-  //   id: "zhong",
-  //   name: "大鐘",
-  //   description: "殿堂鐘聲，開靜用。",
-  //   src: "audio/zhong.mp4"
-  // },
+  //   id: "muyu_big",
+  //   name: "大木魚",
+  //   subtitle: "・・・（簡短說明）",
+  //   file: "audio/muyu_big.mp4"
+  // }
 ];
