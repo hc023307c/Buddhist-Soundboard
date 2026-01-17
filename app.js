@@ -1,106 +1,184 @@
 // app.js
 
 document.addEventListener("DOMContentLoaded", () => {
-  const PAGE_SIZE = 12; // 一頁最多 12 個按鍵
-
   const gridEl = document.getElementById("padGrid");
-  const prevBtn = document.getElementById("prevPageBtn");
-  const nextBtn = document.getElementById("nextPageBtn");
-  const pageInfoEl = document.getElementById("pageInfo");
+  const STORAGE_KEY = "dharmaAudioPadOrder";
 
-  let currentPage = 1;
-  const totalPages = Math.max(1, Math.ceil(AUDIO_BANK.length / PAGE_SIZE));
-
-  // 事先為每個法器建立 Audio 物件
-  const audioPlayers = {};
-  AUDIO_BANK.forEach((item) => {
-    const audio = new Audio(item.src);
-    audio.preload = "auto";
-    audioPlayers[item.id] = audio;
-  });
-
-  function playSoundById(id, padElement) {
-    const audio = audioPlayers[id];
-    if (!audio) return;
-
-    // 如果正在播，從頭開始
+  // 讀取排序設定（localStorage）
+  function loadOrder() {
     try {
-      audio.currentTime = 0;
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return null;
+      const arr = JSON.parse(raw);
+      if (!Array.isArray(arr)) return null;
+      return arr;
     } catch (e) {
-      // 某些瀏覽器如果還沒載完會噴錯，忽略即可
+      console.warn("Load order failed", e);
+      return null;
     }
-
-    // 加上播放中的外觀效果
-    padElement.classList.add("is-playing");
-
-    audio
-      .play()
-      .catch(() => {
-        // 手機若尚未有使用者觸發許可，可能會失敗
-      })
-      .finally(() => {
-        // 約略在 300ms 後拿掉掃光（動畫本身 0.5s）
-        setTimeout(() => {
-          padElement.classList.remove("is-playing");
-        }, 350);
-      });
   }
 
-  function renderPage(page) {
-    // 保護數值
-    if (page < 1) page = 1;
-    if (page > totalPages) page = totalPages;
-    currentPage = page;
+  // 儲存排序設定
+  function saveOrder(order) {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(order));
+    } catch (e) {
+      console.warn("Save order failed", e);
+    }
+  }
 
-    // 更新分頁按鈕狀態
-    prevBtn.disabled = currentPage <= 1;
-    nextBtn.disabled = currentPage >= totalPages;
-    pageInfoEl.textContent = `第 ${currentPage} / ${totalPages} 頁`;
+  // 根據目前 DB + order，建立實際渲染順序
+  function getOrderedList() {
+    const map = new Map();
+    AUDIO_DB.forEach((item) => map.set(item.id, item));
 
-    // 清空格子
+    const savedOrder = loadOrder();
+    let result = [];
+
+    if (savedOrder && savedOrder.length > 0) {
+      // 先依照已存順序放入
+      savedOrder.forEach((id) => {
+        if (map.has(id)) {
+          result.push(map.get(id));
+          map.delete(id);
+        }
+      });
+    }
+
+    // 有新增法器但 order 沒記錄到的，補在後面
+    map.forEach((item) => {
+      result.push(item);
+    });
+
+    return result;
+  }
+
+  // 建立單一 pad 模組（播放＋停止）
+  function createPadItem(meta) {
+    const padItem = document.createElement("div");
+    padItem.className = "pad-item";
+    padItem.dataset.id = meta.id;
+    padItem.setAttribute("draggable", "true");
+
+    // 建立 Audio 實例
+    const audio = new Audio(meta.file);
+    audio.preload = "auto";
+
+    // 上方：播放按鍵
+    const playBtn = document.createElement("button");
+    playBtn.type = "button";
+    playBtn.className = "audio-pad";
+
+    const mainLabel = document.createElement("div");
+    mainLabel.className = "audio-pad-label-main";
+    mainLabel.textContent = meta.name;
+
+    const subLabel = document.createElement("div");
+    subLabel.className = "audio-pad-label-sub";
+    subLabel.textContent = meta.subtitle || "";
+
+    playBtn.appendChild(mainLabel);
+    playBtn.appendChild(subLabel);
+
+    // 下方：停止按鍵
+    const stopBtn = document.createElement("button");
+    stopBtn.type = "button";
+    stopBtn.className = "audio-pad-stop";
+    stopBtn.textContent = "停止此法器";
+
+    // 播放邏輯
+    function playSound() {
+      try {
+        audio.currentTime = 0;
+        audio.play();
+        playBtn.classList.add("is-playing");
+      } catch (e) {
+        console.warn("play failed", e);
+      }
+    }
+
+    function stopSound() {
+      try {
+        audio.pause();
+        audio.currentTime = 0;
+        playBtn.classList.remove("is-playing");
+      } catch (e) {
+        console.warn("stop failed", e);
+      }
+    }
+
+    playBtn.addEventListener("click", playSound);
+    stopBtn.addEventListener("click", stopSound);
+
+    audio.addEventListener("ended", () => {
+      playBtn.classList.remove("is-playing");
+    });
+
+    // 組合模組
+    padItem.appendChild(playBtn);
+    padItem.appendChild(stopBtn);
+
+    return padItem;
+  }
+
+  // 渲染全部法器
+  function renderPads() {
+    const list = getOrderedList();
     gridEl.innerHTML = "";
+    list.forEach((meta) => {
+      const padItem = createPadItem(meta);
+      gridEl.appendChild(padItem);
+    });
 
-    const start = (currentPage - 1) * PAGE_SIZE;
-    const slice = AUDIO_BANK.slice(start, start + PAGE_SIZE);
+    // 渲染完再掛拖曳事件
+    initDragAndDrop();
+  }
 
-    slice.forEach((item) => {
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.className = "audio-pad";
-      btn.dataset.audioId = item.id;
+  // 拖曳排序邏輯（簡易版：桌機一定可用，手機看瀏覽器支援度）
+  function initDragAndDrop() {
+    const items = Array.from(gridEl.querySelectorAll(".pad-item"));
+    let dragSrcId = null;
 
-      const main = document.createElement("div");
-      main.className = "audio-pad-label-main";
-      main.textContent = item.name || "法器";
+    items.forEach((item) => {
+      item.addEventListener("dragstart", (e) => {
+        dragSrcId = item.dataset.id;
+        item.classList.add("dragging");
 
-      const sub = document.createElement("div");
-      sub.className = "audio-pad-label-sub";
-      sub.textContent = item.description || "";
-
-      btn.appendChild(main);
-      btn.appendChild(sub);
-
-      btn.addEventListener("click", () => {
-        playSoundById(item.id, btn);
+        // 有些瀏覽器需要 setData 才會啟用 DnD
+        try {
+          e.dataTransfer.setData("text/plain", dragSrcId);
+        } catch (_) {}
+        e.dataTransfer.effectAllowed = "move";
       });
 
-      gridEl.appendChild(btn);
+      item.addEventListener("dragend", () => {
+        item.classList.remove("dragging");
+        dragSrcId = null;
+      });
+
+      item.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = "move";
+      });
+
+      item.addEventListener("drop", (e) => {
+        e.preventDefault();
+        const targetId = item.dataset.id;
+        if (!dragSrcId || !targetId || dragSrcId === targetId) return;
+
+        const currentOrder = getOrderedList().map((it) => it.id);
+        const fromIndex = currentOrder.indexOf(dragSrcId);
+        const toIndex = currentOrder.indexOf(targetId);
+        if (fromIndex === -1 || toIndex === -1) return;
+
+        // 移動元素：fromIndex → toIndex
+        currentOrder.splice(toIndex, 0, currentOrder.splice(fromIndex, 1)[0]);
+        saveOrder(currentOrder);
+        renderPads();
+      });
     });
   }
 
-  // 分頁按鈕事件
-  prevBtn.addEventListener("click", () => {
-    if (currentPage > 1) {
-      renderPage(currentPage - 1);
-    }
-  });
-
-  nextBtn.addEventListener("click", () => {
-    if (currentPage < totalPages) {
-      renderPage(currentPage + 1);
-    }
-  });
-
-  // 初始畫面
-  renderPage(1);
+  // ===== 啟動 =====
+  renderPads();
 });
