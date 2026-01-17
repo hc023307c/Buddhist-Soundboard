@@ -2,7 +2,6 @@
    全域樣式：禪修・法鼓山風
    ========================= */
 
-/* 系統字體：優先思源黑體 + 一點點宋體感 */
 * {
   box-sizing: border-box;
   -webkit-font-smoothing: antialiased;
@@ -24,8 +23,8 @@ body {
     "PingFang TC",
     "Microsoft JhengHei",
     sans-serif;
-  background: #f5f0e8; /* 淡米色，像宣紙牆面 */
-  color: #3f3a37;       /* 柔和深灰，避免死黑 */
+  background: #f5f0e8; /* 淡米色牆面 */
+  color: #3f3a37;
   line-height: 1.6;
 }
 
@@ -36,7 +35,7 @@ body {
 }
 
 /* =========================
-   頂部標題區（像講堂匾額）
+   Header：像講堂匾額
    ========================= */
 
 .app-header {
@@ -60,7 +59,7 @@ body {
   font-size: clamp(1.5rem, 4vw, 2.1rem);
   font-weight: 700;
   letter-spacing: 0.12em;
-  color: #4a3c2b; /* 像木匾刻字 */
+  color: #4a3c2b;
   text-align: center;
 }
 
@@ -72,7 +71,7 @@ body {
 }
 
 /* =========================
-   主體區塊
+   Main & View 容器
    ========================= */
 
 .app-main {
@@ -83,7 +82,7 @@ body {
 
 .view {
   border-radius: 18px;
-  background: #fdfaf4; /* 稍微偏暖的紙色 */
+  background: #fdfaf4; /* 偏紙色的底 */
   border: 1px solid #e0d4c2;
   padding: clamp(12px, 3vw, 18px);
   box-shadow:
@@ -91,94 +90,75 @@ body {
     0 0 0 1px rgba(255, 255, 255, 0.6);
 }
 
-.hidden {
-  display: none;
-}
-
 .section-title {
-  margin: 0 0 10px;
+  margin: 0 0 6px;
   font-size: clamp(1.05rem, 3vw, 1.25rem);
   font-weight: 600;
   color: #4b4137;
   letter-spacing: 0.08em;
 }
 
-/* =========================
-   分頁列（上一頁 / 下一頁）
-   ========================= */
-
-.pager-bar {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  margin-bottom: 12px;
-}
-
-.pager-btn {
-  border-radius: 999px;
-  border: 1px solid #cbb79a;
-  background: #f7efe2;
-  color: #5b4b3a;
-  padding: 5px 12px;
-  font-size: 0.8rem;
-  min-width: 88px;
-  cursor: pointer;
-  transition:
-    background 0.12s ease,
-    border-color 0.12s ease,
-    color 0.12s ease,
-    transform 0.08s ease,
-    box-shadow 0.12s ease;
-}
-
-.pager-btn:disabled {
-  opacity: 0.4;
-  cursor: default;
-  box-shadow: none;
-  transform: none;
-}
-
-.pager-btn:not(:disabled):hover {
-  background: #f3e5d3;
-  border-color: #b5915b;
-  color: #4b3c2c;
-  transform: translateY(-1px);
-  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.12);
-}
-
-.pager-info {
-  font-size: 0.8rem;
+.section-desc {
+  margin: 0 0 10px;
+  font-size: 0.85rem;
   color: #7b6c5a;
 }
 
+.hint-text {
+  margin-top: 10px;
+  font-size: 0.8rem;
+  color: #8c7b67;
+}
+
 /* =========================
-   法器按鍵格子（最多 3×4 / 2×N）
+   法器按鍵區：Grid
+   - 桌機：4 欄
+   - 手機：2 欄
    ========================= */
 
 .pad-grid {
   display: grid;
-  gap: 10px;
-  grid-template-columns: repeat(2, minmax(0, 1fr)); /* 手機 2 欄 */
-  margin-top: 6px;
+  gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr)); /* 手機預設 2 欄 */
 }
 
-@media (min-width: 640px) {
+/* 平板以上可視需要調整，這裡先維持 2 欄 */
+@media (min-width: 768px) {
   .pad-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr)); /* 平板 3 欄 */
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
-@media (min-width: 900px) {
+/* 桌機：4 欄 */
+@media (min-width: 1024px) {
   .pad-grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr)); /* 桌機 4 欄 */
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
 
 /* =========================
-   法器按鍵（主角）
+   單一法器模組（上：播放 / 下：停止）
    ========================= */
 
+.pad-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  /* 讓拖曳區塊看起來是一整塊 */
+  cursor: grab;
+}
+
+.pad-item:active {
+  cursor: grabbing;
+}
+
+/* 拖曳時視覺提示 */
+.pad-item.dragging {
+  opacity: 0.8;
+  transform: scale(0.98);
+}
+
+/* 上方：播放按鍵（大） */
 .audio-pad {
   position: relative;
   display: flex;
@@ -189,9 +169,13 @@ body {
   padding: 14px 10px;
   border-radius: 20px;
   border: 1px solid #dacbb6;
-  background: radial-gradient(circle at top left, #fbf5ea 0%, #f9f1e4 40%, #f7ecdd 100%);
+  background: radial-gradient(
+    circle at top left,
+    #fbf5ea 0%,
+    #f9f1e4 40%,
+    #f7ecdd 100%
+  );
   color: #43362b;
-  cursor: pointer;
   text-align: center;
   overflow: hidden;
   transition:
@@ -202,7 +186,7 @@ body {
     filter 0.15s ease;
 }
 
-/* 圓角內框，像木框邊線 */
+/* 內框線，像木框邊 */
 .audio-pad::before {
   content: "";
   position: absolute;
@@ -212,26 +196,31 @@ body {
   pointer-events: none;
 }
 
-/* 輕微陰影（桌上木塊） */
+/* 木塊陰影 */
 .audio-pad {
   box-shadow:
     0 6px 14px rgba(0, 0, 0, 0.07),
     0 1px 0 rgba(255, 255, 255, 0.7);
 }
 
-/* hover：像手放上去，木塊微微抬起 */
+/* hover：桌機微抬起 */
 @media (hover: hover) and (pointer: fine) {
   .audio-pad:hover {
     transform: translateY(-2px);
     border-color: #bc9560;
-    background: radial-gradient(circle at top left, #fcf6ec 0%, #f9f0e1 40%, #f4e4d0 100%);
+    background: radial-gradient(
+      circle at top left,
+      #fcf6ec 0%,
+      #f9f0e1 40%,
+      #f4e4d0 100%
+    );
     box-shadow:
       0 10px 22px rgba(0, 0, 0, 0.12),
       0 0 0 1px rgba(255, 255, 255, 0.8);
   }
 }
 
-/* 按下：下壓感，像敲下木魚那瞬間 */
+/* 按下：下壓感 */
 .audio-pad:active {
   transform: translateY(1px);
   box-shadow:
@@ -240,13 +229,13 @@ body {
   filter: brightness(0.98);
 }
 
-/* 播放時（is-playing）：不炫光，只輕微亮一點即可 */
+/* 播放中：稍微亮一點 */
 .audio-pad.is-playing {
   border-color: #b9894f;
   filter: brightness(1.05);
 }
 
-/* 主要文字：法器名稱 */
+/* 主文字：法器名稱 */
 .audio-pad-label-main {
   font-size: 1rem;
   font-weight: 600;
@@ -256,69 +245,47 @@ body {
 
 /* 副文字：說明 */
 .audio-pad-label-sub {
-  font-size: 0.78rem;
+  font-size: 0.8rem;
   color: #7b6c5a;
   line-height: 1.4;
 }
 
-/* =========================
-   Service Iframe View（如果未來延用）
-   ========================= */
-
-.view-service {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.service-header {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  flex-wrap: wrap;
-}
-
-.btn-back {
+/* 下方：停止按鍵（同寬、較矮） */
+.audio-pad-stop {
+  width: 100%;
+  min-height: 32px;
   border-radius: 999px;
-  border: 1px solid #cbb79a;
-  background: #f7efe2;
-  color: #5b4b3a;
-  padding: 5px 10px;
+  border: 1px solid #d2c2ab;
+  background: #f6eee1;
+  color: #6b5a47;
   font-size: 0.8rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
   transition:
-    background 0.12s ease,
-    border-color 0.12s ease,
-    color 0.12s ease,
-    transform 0.08s ease,
-    box-shadow 0.12s ease;
+    background 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease,
+    box-shadow 0.12s ease,
+    transform 0.08s ease;
 }
 
-.btn-back:hover {
-  background: #f3e5d3;
-  border-color: #b5915b;
-  color: #4b3c2c;
+.audio-pad-stop:hover {
+  background: #f1e4d2;
+  border-color: #b48e5c;
+  color: #4e3f30;
   transform: translateY(-1px);
   box-shadow: 0 3px 8px rgba(0, 0, 0, 0.12);
 }
 
-.service-frame-wrapper {
-  width: 100%;
-  height: calc(100vh - 150px);
-  border-radius: 18px;
-  overflow: hidden;
-  border: 1px solid #e0d4c2;
-  background: #f7f1e7;
-}
-
-.service-frame-wrapper iframe {
-  width: 100%;
-  height: 100%;
-  border: none;
+.audio-pad-stop:active {
+  transform: translateY(0);
+  box-shadow: none;
 }
 
 /* =========================
-   手機調整
+   手機微調
    ========================= */
 
 @media (max-width: 640px) {
@@ -332,13 +299,9 @@ body {
     padding: 12px;
   }
 
-  .pad-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
   .audio-pad {
-    min-height: 92px;
-    padding: 12px 6px;
+    min-height: 90px;
+    padding: 10px 8px;
   }
 
   .audio-pad-label-main {
@@ -347,6 +310,11 @@ body {
 
   .audio-pad-label-sub {
     font-size: 0.75rem;
+  }
+
+  .audio-pad-stop {
+    min-height: 30px;
+    font-size: 0.78rem;
   }
 }
 
