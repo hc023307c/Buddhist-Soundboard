@@ -1,0 +1,261 @@
+/* ===== Global ===== */
+
+{
+  box-sizing: border-box;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+html {
+  font-size: clamp(14px, 3.2vw, 16px);
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    "PingFang TC", "Microsoft JhengHei", sans-serif;
+  background: #020617;
+  color: #e2e8f0;
+  line-height: 1.5;
+}
+
+.app-shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ===== Header ===== */
+
+.app-header {
+  padding: 12px 16px;
+  border-bottom: 1px solid #1e293b;
+  background: radial-gradient(circle at top left, #1e293b, #020617);
+}
+
+.app-title-group {
+  max-width: 1040px;
+  margin: 0 auto;
+}
+
+.app-title {
+  margin: 0 0 4px;
+  font-size: clamp(1.4rem, 3.8vw, 2rem);
+  font-weight: 800;
+  color: #f9fafb;
+  text-shadow: 0 0 12px rgba(34, 197, 94, 0.3);
+}
+
+.app-subtitle {
+  margin: 0;
+  font-size: clamp(0.85rem, 2.6vw, 1rem);
+  color: #94a3b8;
+}
+
+/* ===== Main & View ===== */
+
+.app-main {
+  flex: 1;
+  width: min(1040px, 100% - 24px);
+  margin: 12px auto 16px;
+}
+
+.view {
+  border-radius: 16px;
+  background: #020617;
+  border: 1px solid #1f2937;
+  padding: clamp(12px, 3vw, 18px);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.65);
+}
+
+.section-title {
+  margin: 0 0 10px;
+  font-size: clamp(1rem, 3vw, 1.2rem);
+  font-weight: 600;
+  color: #e5e7eb;
+}
+
+/* ===== Pager Bar ===== */
+
+.pager-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.pager-btn {
+  border-radius: 999px;
+  border: 1px solid #334155;
+  background: #020617;
+  color: #cbd5f5;
+  padding: 4px 10px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  min-width: 80px;
+  transition: background 0.12s ease, border-color 0.12s ease, transform 0.08s ease;
+}
+
+.pager-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+  transform: none;
+}
+
+.pager-btn:not(:disabled):hover {
+  background: #0b1120;
+  border-color: #22c55e;
+  transform: translateY(-1px);
+}
+
+.pager-info {
+  font-size: 0.8rem;
+  color: #94a3b8;
+}
+
+/* ===== Pad Grid ===== */
+/* 手機：2 欄，桌機：最多 4 欄（12 個 = 3 行 × 4 列） */
+
+.pad-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: 6px;
+}
+
+@media (min-width: 640px) {
+  .pad-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 900px) {
+  .pad-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+/* ===== Audio Pad Button ===== */
+
+.audio-pad {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  min-height: 96px;
+  padding: 12px 8px;
+  border-radius: 18px;
+  border: 1px solid #0f172a;
+  background: radial-gradient(circle at top left, #020617, #020617);
+  color: #e5e7eb;
+  cursor: pointer;
+  text-align: center;
+  overflow: hidden;
+  transition:
+    transform 0.1s ease,
+    box-shadow 0.15s ease,
+    border-color 0.15s ease,
+    background 0.15s ease,
+    filter 0.15s ease;
+}
+
+/* 內框光圈 */
+.audio-pad::before {
+  content: "";
+  position: absolute;
+  inset: 1px;
+  border-radius: 16px;
+  border: 1px solid;
+  border-image: linear-gradient(135deg, #22c55e, #0ea5e9) 1;
+  opacity: 0.78;
+  pointer-events: none;
+}
+
+/* 底部陰影 */
+.audio-pad {
+  box-shadow:
+    0 0 0 1px rgba(15, 23, 42, 0.9),
+    0 14px 40px rgba(15, 23, 42, 0.8);
+}
+
+/* hover / active 效果（桌機） */
+@media (hover: hover) and (pointer: fine) {
+  .audio-pad:hover {
+    transform: translateY(-2px);
+    filter: brightness(1.15);
+    border-color: #22c55e;
+  }
+
+  .audio-pad:hover::before {
+    border-image: linear-gradient(135deg, #38bdf8, #6366f1) 1;
+  }
+
+  .audio-pad:active {
+    transform: translateY(0);
+    filter: brightness(0.98);
+  }
+}
+
+/* 按下瞬間動畫（手機 / 桌機通用） */
+.audio-pad:active {
+  box-shadow:
+    0 0 0 1px rgba(22, 163, 74, 0.9),
+    0 10px 30px rgba(15, 23, 42, 0.9);
+}
+
+/* 掃光效果 */
+.audio-pad::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    115deg,
+    transparent 0%,
+    rgba(56, 189, 248, 0.28) 50%,
+    transparent 100%
+  );
+  transform: translateX(-130%);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.audio-pad.is-playing::after {
+  animation: padScan 0.5s ease-out forwards;
+}
+
+@keyframes padScan {
+  from {
+    transform: translateX(-130%);
+    opacity: 0.4;
+  }
+  to {
+    transform: translateX(130%);
+    opacity: 0;
+  }
+}
+
+/* Pad 文字 */
+
+.audio-pad-label-main {
+  font-size: 1rem;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.audio-pad-label-sub {
+  font-size: 0.75rem;
+  color: #9ca3af;
+  opacity: 0.95;
+}
+
+/* ===== Footer ===== */
+
+.app-footer {
+  padding: 8px 16px 12px;
+  text-align: center;
+  font-size: 0.75rem;
+  color: #64748b;
+  border-top: 1px solid #020617;
+}
