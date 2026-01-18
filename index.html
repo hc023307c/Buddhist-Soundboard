@@ -4,7 +4,6 @@
   <meta charset="UTF-8" />
   <title>法器演音</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <!-- 檔名改回標準：style.css -->
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -22,6 +21,11 @@
         <p class="section-desc">
           點擊上方按鍵播放法器聲，下方按鍵可停止該法器。拖曳整塊卡片可調整順序（會記錄在此裝置）。
         </p>
+
+        <!-- 新增工具列：目前只有「全部靜音」 -->
+        <div class="toolbar">
+          <button id="stopAllBtn" class="stop-all-btn">全部靜音</button>
+        </div>
 
         <div id="padGrid" class="pad-grid">
           <!-- 由 app.js 動態產生 -->
