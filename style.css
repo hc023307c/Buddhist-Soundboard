@@ -112,8 +112,9 @@ body {
 
 /* =========================
    法器按鍵區：Grid
-   - 桌機：4 欄
    - 手機：2 欄
+   - 平板：3 欄
+   - 桌機：4 欄
    ========================= */
 
 .pad-grid {
@@ -122,14 +123,12 @@ body {
   grid-template-columns: repeat(2, minmax(0, 1fr)); /* 手機預設 2 欄 */
 }
 
-/* 平板以上可視需要調整，這裡先維持 2 欄 */
 @media (min-width: 768px) {
   .pad-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
-/* 桌機：4 欄 */
 @media (min-width: 1024px) {
   .pad-grid {
     grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -144,7 +143,6 @@ body {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  /* 讓拖曳區塊看起來是一整塊 */
   cursor: grab;
 }
 
@@ -235,12 +233,13 @@ body {
   filter: brightness(1.05);
 }
 
-/* 主文字：法器名稱 */
+/* 主文字：法器名稱（放大＋加粗＋深色） */
 .audio-pad-label-main {
-  font-size: 1rem;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  margin-bottom: 3px;
+  font-size: 1.15rem;       /* 原本 1rem → 1.15rem */
+  font-weight: 700;         /* 加粗，有匾額感 */
+  letter-spacing: 0.06em;   /* 稍微加字距 */
+  margin-bottom: 4px;
+  color: #3b2f25;           /* 深木色，提高辨識度 */
 }
 
 /* 副文字：說明 */
@@ -304,8 +303,10 @@ body {
     padding: 10px 8px;
   }
 
+  /* 手機版法器名稱加大 */
   .audio-pad-label-main {
-    font-size: 0.95rem;
+    font-size: 1.12rem;
+    font-weight: 700;
   }
 
   .audio-pad-label-sub {
