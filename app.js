@@ -3,6 +3,7 @@
 // 1. 使用 Web Audio API 預先解碼，減少延遲
 // 2. 小木魚（id 含 "xiaoyu"）→ 重疊播放（overlap 模式）
 // 3. 其他法器（如 yinqing / yinqingbing）→ 新聲來時舊聲淡出（fade 模式）
+// 4. 連動關係：meta.stopOnPlay = ["某id", ...] → 播放自己前，會先把那些法器淡出停止
 
 document.addEventListener("DOMContentLoaded", () => {
   const gridEl = document.getElementById("padGrid");
@@ -16,8 +17,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // === Web Audio Engine ===
   let audioCtx = null;
-  const audioBuffers = new Map();        // id -> AudioBuffer
-  const activeSources = new Map();       // id -> [{ source, gainNode }]
+  const audioBuffers = new Map();      // id -> AudioBuffer
+  const activeSources = new Map();     // id -> [{ source, gainNode }]
+  const playButtons = new Map();       // id -> 對應的播放按鍵（方便改樣式）
 
   function getAudioContext() {
     if (!audioCtx) {
@@ -31,11 +33,12 @@ document.addEventListener("DOMContentLoaded", () => {
   function getPlayMode(meta) {
     if (meta.mode) return meta.mode;
     if (meta.id && meta.id.toLowerCase().includes("xiaoyu")) {
-      return "overlap";
+      return "overlap"; // 小木魚：允許重疊
     }
-    return "fade";
+    return "fade";       // 其它：新聲來舊聲淡出
   }
 
+  // 載入 / 解碼 AudioBuffer
   async function loadBuffer(meta) {
     if (audioBuffers.has(meta.id)) return;
 
@@ -55,6 +58,38 @@ document.addEventListener("DOMContentLoaded", () => {
     await loadBuffer(meta);
   }
 
+  // 連動：例如壓磬（yaqing）敲下去，要把引磬（yinqing）淡出停掉
+  function stopLinkedTargets(meta) {
+    if (!audioCtx) return;
+    if (!meta.stopOnPlay || !Array.isArray(meta.stopOnPlay)) return;
+
+    const ctx = audioCtx;
+    const now = ctx.currentTime;
+
+    meta.stopOnPlay.forEach((targetId) => {
+      const list = activeSources.get(targetId);
+      if (!list || !list.length) return;
+
+      list.forEach(({ source, gainNode }) => {
+        try {
+          const g = gainNode.gain;
+          g.cancelScheduledValues(now);
+          g.setValueAtTime(g.value, now);
+          g.linearRampToValueAtTime(0, now + 0.2); // 0.2s 淡出
+          source.stop(now + 0.25);
+        } catch (_) {}
+      });
+
+      activeSources.delete(targetId);
+
+      // 把對應的播放按鈕樣式也復原
+      const btn = playButtons.get(targetId);
+      if (btn) {
+        btn.classList.remove("is-playing");
+      }
+    });
+  }
+
   function playInstrument(meta, playBtn) {
     const ctx = getAudioContext();
     const buffer = audioBuffers.get(meta.id);
@@ -64,6 +99,9 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     const mode = getPlayMode(meta);
+
+    // 先處理「壓掉別人的」連動邏輯（例如：yaqing → stop yinqing）
+    stopLinkedTargets(meta);
 
     const source = ctx.createBufferSource();
     source.buffer = buffer;
@@ -138,11 +176,11 @@ document.addEventListener("DOMContentLoaded", () => {
       } catch (_) {}
     });
 
-    playBtn.classList.remove("is-playing");
     // onended 觸發後會真正清掉 activeSources
+    playBtn.classList.remove("is-playing");
   }
 
-  // === 原本的排序邏輯 ===
+  // === 排序邏輯（跟原本一樣） ===
 
   function loadOrder() {
     try {
@@ -181,6 +219,7 @@ document.addEventListener("DOMContentLoaded", () => {
       });
     }
 
+    // 沒在 savedOrder 裡的新法器 → 補在後面
     map.forEach((item) => {
       result.push(item);
     });
@@ -210,6 +249,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
     playBtn.appendChild(mainLabel);
     playBtn.appendChild(subLabel);
+
+    // 把這個按鍵記起來，用於連動關係時移除 is-playing
+    playButtons.set(meta.id, playBtn);
 
     // 下方：停止按鍵
     const stopBtn = document.createElement("button");
@@ -248,13 +290,16 @@ document.addEventListener("DOMContentLoaded", () => {
   function renderPads() {
     const list = getOrderedList();
     gridEl.innerHTML = "";
+    playButtons.clear();   // 重新渲染前，先清空按鍵映射
+
     list.forEach((meta) => {
       const padItem = createPadItem(meta);
       gridEl.appendChild(padItem);
     });
 
     initDragAndDrop();
-    // 順便偷偷預載所有音檔（不等，也不阻塞 UI）
+
+    // 順便預載所有音檔（背景載入，不阻塞 UI）
     list.forEach((meta) => {
       loadBuffer(meta);
     });
