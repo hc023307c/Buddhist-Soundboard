@@ -4,9 +4,13 @@
 // 2. 小木魚（id 含 "xiaoyu"）→ 重疊播放（overlap 模式）
 // 3. 其他法器（如 yinqing / yinqingbing）→ 新聲來時舊聲淡出（fade 模式）
 // 4. 連動關係：meta.stopOnPlay = ["某id", ...] → 播放自己前，會先把那些法器淡出停止
+// 5. 支援多指同時敲擊（pointerdown）
+// 6. 新增「全部靜音」按鈕 stopAllInstruments()
+// 7. pad 區額外攔截 iPhone 雙擊放大（touchend 防 zoom）
 
 document.addEventListener("DOMContentLoaded", () => {
   const gridEl = document.getElementById("padGrid");
+  const stopAllBtn = document.getElementById("stopAllBtn");
   const STORAGE_KEY = "dharmaAudioPadOrder";
 
   // === 檢查 DB ===
@@ -176,11 +180,46 @@ document.addEventListener("DOMContentLoaded", () => {
       } catch (_) {}
     });
 
-    // onended 觸發後會真正清掉 activeSources
+    activeSources.delete(meta.id);
     playBtn.classList.remove("is-playing");
   }
 
-  // === 排序邏輯（跟原本一樣） ===
+  // 全部靜音
+  function stopAllInstruments() {
+    if (!audioCtx) {
+      // 沒啟動過 audioCtx，代表根本沒播過，清一下樣式就好
+      playButtons.forEach((btn) => btn.classList.remove("is-playing"));
+      activeSources.clear();
+      return;
+    }
+
+    const ctx = audioCtx;
+    const now = ctx.currentTime;
+
+    activeSources.forEach((list) => {
+      list.forEach(({ source, gainNode }) => {
+        try {
+          const g = gainNode.gain;
+          g.cancelScheduledValues(now);
+          g.setValueAtTime(g.value, now);
+          g.linearRampToValueAtTime(0, now + 0.12);
+          source.stop(now + 0.15);
+        } catch (_) {}
+      });
+    });
+
+    activeSources.clear();
+    playButtons.forEach((btn) => btn.classList.remove("is-playing"));
+  }
+
+  // 綁定「全部靜音」按鈕
+  if (stopAllBtn) {
+    stopAllBtn.addEventListener("click", () => {
+      stopAllInstruments();
+    });
+  }
+
+  // === 排序邏輯（和原本一樣） ===
 
   function loadOrder() {
     try {
@@ -250,7 +289,7 @@ document.addEventListener("DOMContentLoaded", () => {
     playBtn.appendChild(mainLabel);
     playBtn.appendChild(subLabel);
 
-    // 把這個按鍵記起來，用於連動關係時移除 is-playing
+    // 把這個按鍵記起來，用於連動 / 全部靜音時移除 is-playing
     playButtons.set(meta.id, playBtn);
 
     // 下方：停止按鍵
@@ -259,23 +298,35 @@ document.addEventListener("DOMContentLoaded", () => {
     stopBtn.className = "audio-pad-stop";
     stopBtn.textContent = "停止此法器";
 
-    // 播放邏輯（使用 Web Audio）
-    playBtn.addEventListener("click", async () => {
+    // === 播放邏輯（使用 pointerdown：支援多指同時敲） ===
+    const handlePlayPointerDown = async (e) => {
+      // 在按鍵上禁止雙擊縮放 / 避免選取文字
+      e.preventDefault();
+
       const ctx = getAudioContext();
       if (ctx.state === "suspended") {
         try {
           await ctx.resume();
-        } catch (e) {
-          console.warn("AudioContext resume failed", e);
+        } catch (err) {
+          console.warn("AudioContext resume failed", err);
         }
       }
 
       await ensureBufferLoaded(meta);
       playInstrument(meta, playBtn);
+    };
+
+    // pointerdown 支援多指
+    playBtn.addEventListener("pointerdown", handlePlayPointerDown);
+
+    // 為了安全，避免 click 再觸發一次播放（防重複）
+    playBtn.addEventListener("click", (e) => {
+      e.preventDefault();
     });
 
-    // 停止此法器
-    stopBtn.addEventListener("click", () => {
+    // 停止此法器（用 pointerdown，比 click 更即時）
+    stopBtn.addEventListener("pointerdown", (e) => {
+      e.preventDefault();
       stopInstrument(meta, playBtn);
     });
 
@@ -305,7 +356,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // 拖曳排序
+  // 拖曳排序（維持原本行為）
   function initDragAndDrop() {
     const items = Array.from(gridEl.querySelectorAll(".pad-item"));
     let dragSrcId = null;
@@ -346,6 +397,24 @@ document.addEventListener("DOMContentLoaded", () => {
       });
     });
   }
+
+  // === iPhone 雙擊放大保護：只在 pad 區攔截 ===
+  (function preventIOSDoubleTapZoom() {
+    let lastTouchEnd = 0;
+
+    gridEl.addEventListener(
+      "touchend",
+      (e) => {
+        const now = Date.now();
+        if (now - lastTouchEnd <= 350) {
+          // 第二下太接近 → 視為雙擊，攔截掉避免 zoom
+          e.preventDefault();
+        }
+        lastTouchEnd = now;
+      },
+      { passive: false }
+    );
+  })();
 
   // ===== 啟動 =====
   renderPads();
