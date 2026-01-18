@@ -111,6 +111,44 @@ body {
 }
 
 /* =========================
+   上方控制區（例如全部靜音）
+   ========================= */
+
+.toolbar {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin: 6px 0 10px;
+}
+
+.stop-all-btn {
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid #d2c2ab;
+  background: #f2e5d2;
+  color: #5c4a38;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    box-shadow 0.12s ease,
+    transform 0.08s ease;
+}
+
+.stop-all-btn:hover {
+  background: #ecdbc7;
+  border-color: #b48e5c;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.12);
+  transform: translateY(-1px);
+}
+
+.stop-all-btn:active {
+  transform: translateY(0);
+  box-shadow: none;
+}
+
+/* =========================
    法器按鍵區：Grid
    - 手機：2 欄
    - 平板：3 欄
@@ -121,6 +159,12 @@ body {
   display: grid;
   gap: 12px;
   grid-template-columns: repeat(2, minmax(0, 1fr)); /* 手機預設 2 欄 */
+
+  /* 只在按鍵區禁止縮放 / 雙擊放大 */
+  touch-action: pan-y;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
 @media (min-width: 768px) {
@@ -182,6 +226,11 @@ body {
     border-color 0.15s ease,
     background 0.15s ease,
     filter 0.15s ease;
+
+  /* 避免長按選取、雙擊 highlight */
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 /* 內框線，像木框邊 */
@@ -235,11 +284,11 @@ body {
 
 /* 主文字：法器名稱（放大＋加粗＋深色） */
 .audio-pad-label-main {
-  font-size: 1.15rem;       /* 原本 1rem → 1.15rem */
-  font-weight: 700;         /* 加粗，有匾額感 */
-  letter-spacing: 0.06em;   /* 稍微加字距 */
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
   margin-bottom: 4px;
-  color: #3b2f25;           /* 深木色，提高辨識度 */
+  color: #3b2f25;
 }
 
 /* 副文字：說明 */
@@ -268,6 +317,10 @@ body {
     color 0.15s ease,
     box-shadow 0.12s ease,
     transform 0.08s ease;
+
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 .audio-pad-stop:hover {
@@ -303,7 +356,6 @@ body {
     padding: 10px 8px;
   }
 
-  /* 手機版法器名稱加大 */
   .audio-pad-label-main {
     font-size: 1.12rem;
     font-weight: 700;
